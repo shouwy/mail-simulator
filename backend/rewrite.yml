@@ -1,0 +1,5 @@
+type: specs.openrewrite.org/v1beta/recipe
+name: UpgradeToJava21Bundle
+displayName: Upgrade to Java 21 Bundle
+recipeList:
+  - org.openrewrite.java.migrate.UpgradeToJava21

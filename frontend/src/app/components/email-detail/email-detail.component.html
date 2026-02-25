@@ -1,0 +1,18 @@
+<div class="email-detail-container">
+  <button class="back-btn" (click)="goBack()">← Back to list</button>
+
+  <div *ngIf="loading" class="loading">Loading email...</div>
+  <div *ngIf="error" class="error">{{ error }}</div>
+
+  <div *ngIf="email" class="email-card">
+    <h2>{{ email.subject }}</h2>
+    <div class="email-meta">
+      <div><span class="label">From:</span> {{ email.from }}</div>
+      <div><span class="label">To:</span> {{ email.to }}</div>
+      <div><span class="label">Received:</span> {{ email.receivedAt | date:'medium' }}</div>
+    </div>
+    <div class="email-body">
+      <pre>{{ email.body }}</pre>
+    </div>
+  </div>
+</div>

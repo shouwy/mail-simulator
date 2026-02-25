@@ -1,0 +1,79 @@
+.email-detail-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+
+  .back-btn {
+    padding: 8px 16px;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+
+    &:hover {
+      background: #545b62;
+    }
+  }
+
+  .loading, .error {
+    padding: 20px;
+    text-align: center;
+    border-radius: 4px;
+  }
+
+  .error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+  }
+
+  .email-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+
+    h2 {
+      margin: 0 0 16px 0;
+      font-size: 1.4rem;
+      color: #212529;
+    }
+
+    .email-meta {
+      background: #f8f9fa;
+      padding: 16px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+
+      div {
+        margin-bottom: 8px;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+
+      .label {
+        font-weight: 600;
+        color: #495057;
+        margin-right: 8px;
+      }
+    }
+
+    .email-body {
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-family: inherit;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: #212529;
+      }
+    }
+  }
+}

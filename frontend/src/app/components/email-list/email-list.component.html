@@ -1,0 +1,32 @@
+<div class="email-list-container">
+  <div class="header">
+    <h1>📬 Mail Simulator</h1>
+    <button class="refresh-btn" (click)="loadEmails()">🔄 Refresh</button>
+  </div>
+
+  <div *ngIf="loading" class="loading">Loading emails...</div>
+  <div *ngIf="error" class="error">{{ error }}</div>
+
+  <div *ngIf="!loading && !error && emails.length === 0" class="empty">
+    No emails received yet. Send an email to localhost:2525 to get started.
+  </div>
+
+  <table *ngIf="!loading && emails.length > 0" class="email-table">
+    <thead>
+      <tr>
+        <th>From</th>
+        <th>To</th>
+        <th>Subject</th>
+        <th>Received At</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let email of emails" (click)="viewEmail(email.id)" class="email-row">
+        <td>{{ email.from }}</td>
+        <td>{{ email.to }}</td>
+        <td>{{ email.subject }}</td>
+        <td>{{ email.receivedAt | date:'short' }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

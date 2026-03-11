@@ -26,8 +26,10 @@ import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.net.ServerSocket;
+import java.net.SocketException;
 import java.net.Socket;
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -47,6 +49,13 @@ public class SmtpServer {
     private final ExecutorService executorService = Executors.newCachedThreadPool();
     private volatile boolean running = false;
 
+    private static final String SMTP_READY = "220 mail-simulator SMTP Ready";
+    private static final String SMTP_OK = "250 OK";
+    private static final String SMTP_MESSAGE_ACCEPTED = "250 OK: Message accepted";
+    private static final String SMTP_DATA_PROMPT = "354 End data with <CR><LF>.<CR><LF>";
+    private static final String SMTP_BYE = "221 Bye";
+    private static final String SMTP_UNKNOWN_COMMAND = "500 Unknown command";
+
     public SmtpServer(EmailService emailService) {
         this.emailService = emailService;
     }
@@ -54,24 +63,39 @@ public class SmtpServer {
     @PostConstruct
     public void start() {
         running = true;
-        executorService.submit(() -> {
-            try {
-                serverSocket = new ServerSocket(smtpPort);
-                logger.info("SMTP server started on port {}", smtpPort);
-                while (running) {
-                    try {
-                        Socket clientSocket = serverSocket.accept();
-                        executorService.submit(() -> handleClient(clientSocket));
-                    } catch (IOException e) {
-                        if (running) {
-                            logger.error("Error accepting connection", e);
-                        }
-                    }
+        executorService.submit(this::runServer);
+    }
+
+    private void runServer() {
+        try {
+            serverSocket = new ServerSocket(smtpPort);
+            logger.info("SMTP server started on port {}", smtpPort);
+
+            while (running) {
+                Socket clientSocket = acceptClient();
+                if (clientSocket != null) {
+                    executorService.submit(() -> handleClient(clientSocket));
                 }
-            } catch (IOException e) {
-                logger.error("Failed to start SMTP server on port {}", smtpPort, e);
             }
-        });
+        } catch (IOException e) {
+            logger.error("Failed to start SMTP server on port {}", smtpPort, e);
+        }
+    }
+
+    private Socket acceptClient() {
+        try {
+            return serverSocket.accept();
+        } catch (SocketException e) {
+            if (running) {
+                logger.error("SMTP socket closed unexpectedly", e);
+            }
+            return null;
+        } catch (IOException e) {
+            if (running) {
+                logger.error("Error accepting connection", e);
+            }
+            return null;
+        }
     }
 
     @PreDestroy
@@ -93,53 +117,13 @@ public class SmtpServer {
             BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             PrintWriter writer = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()), true)
         ) {
-            writer.println("220 mail-simulator SMTP Ready");
-
-            String from = "";
-            String to = "";
-            StringBuilder dataBuffer = new StringBuilder();
-            boolean inData = false;
+            writer.println(SMTP_READY);
+            ClientSession session = new ClientSession();
 
             String line;
             while ((line = reader.readLine()) != null) {
-                if (inData) {
-                    if (line.equals(".")) {
-                        inData = false;
-                        Email email = parseEmail(from, to, dataBuffer.toString());
-                        emailService.save(email);
-                        logger.info("Email received from {} to {}", from, to);
-                        writer.println("250 OK: Message accepted");
-                        dataBuffer = new StringBuilder();
-                    } else {
-                        dataBuffer.append(line.startsWith("..") ? line.substring(1) : line).append("\n");
-                    }
-                } else {
-                    String upper = line.toUpperCase();
-                    if (upper.startsWith("EHLO") || upper.startsWith("HELO")) {
-                        writer.println("250-mail-simulator");
-                        writer.println("250 OK");
-                    } else if (upper.startsWith("MAIL FROM:")) {
-                        from = extractAddress(line.substring(10));
-                        writer.println("250 OK");
-                    } else if (upper.startsWith("RCPT TO:")) {
-                        to = extractAddress(line.substring(8));
-                        writer.println("250 OK");
-                    } else if (upper.equals("DATA")) {
-                        writer.println("354 End data with <CR><LF>.<CR><LF>");
-                        inData = true;
-                    } else if (upper.startsWith("QUIT")) {
-                        writer.println("221 Bye");
-                        break;
-                    } else if (upper.startsWith("NOOP")) {
-                        writer.println("250 OK");
-                    } else if (upper.startsWith("RSET")) {
-                        from = "";
-                        to = "";
-                        dataBuffer = new StringBuilder();
-                        writer.println("250 OK");
-                    } else {
-                        writer.println("500 Unknown command");
-                    }
+                if (!processClientLine(line, session, writer)) {
+                    break;
                 }
             }
         } catch (IOException e) {
@@ -151,6 +135,70 @@ public class SmtpServer {
                 logger.error("Error closing client socket", e);
             }
         }
+    }
+
+    private boolean processClientLine(String line, ClientSession session, PrintWriter writer) {
+        if (session.inData) {
+            processDataLine(line, session, writer);
+            return true;
+        }
+        return processCommandLine(line, session, writer);
+    }
+
+    private void processDataLine(String line, ClientSession session, PrintWriter writer) {
+        if (".".equals(line)) {
+            session.inData = false;
+            Email email = parseEmail(session.from, session.to, session.dataBuffer.toString());
+            emailService.save(email);
+            logger.info("Email received from {} to {}", session.from, session.to);
+            writer.println(SMTP_MESSAGE_ACCEPTED);
+            session.dataBuffer = new StringBuilder();
+            return;
+        }
+        session.dataBuffer.append(normalizeDotStuffedLine(line)).append("\n");
+    }
+
+    private boolean processCommandLine(String line, ClientSession session, PrintWriter writer) {
+        String upper = line.toUpperCase(Locale.ROOT);
+        if (upper.startsWith("EHLO") || upper.startsWith("HELO")) {
+            writer.println("250-mail-simulator");
+            writer.println(SMTP_OK);
+            return true;
+        }
+        if (upper.startsWith("MAIL FROM:")) {
+            session.from = extractAddress(line.substring(10));
+            writer.println(SMTP_OK);
+            return true;
+        }
+        if (upper.startsWith("RCPT TO:")) {
+            session.to = extractAddress(line.substring(8));
+            writer.println(SMTP_OK);
+            return true;
+        }
+        if (upper.equals("DATA")) {
+            writer.println(SMTP_DATA_PROMPT);
+            session.inData = true;
+            return true;
+        }
+        if (upper.startsWith("QUIT")) {
+            writer.println(SMTP_BYE);
+            return false;
+        }
+        if (upper.startsWith("NOOP")) {
+            writer.println(SMTP_OK);
+            return true;
+        }
+        if (upper.startsWith("RSET")) {
+            session.reset();
+            writer.println(SMTP_OK);
+            return true;
+        }
+        writer.println(SMTP_UNKNOWN_COMMAND);
+        return true;
+    }
+
+    private String normalizeDotStuffedLine(String line) {
+        return line.startsWith("..") ? line.substring(1) : line;
     }
 
     private String extractAddress(String raw) {
@@ -219,44 +267,75 @@ public class SmtpServer {
 
     private void parseMimePart(Part part, Email email, StringBuilder bodyCollector, AtomicInteger partIndex)
         throws MessagingException, IOException {
-        if (part.isMimeType("multipart/*")) {
-            Object content = part.getContent();
-            if (content instanceof Multipart multipart) {
-                for (int i = 0; i < multipart.getCount(); i++) {
-                    BodyPart bodyPart = multipart.getBodyPart(i);
-                    parseMimePart(bodyPart, email, bodyCollector, partIndex);
-                }
-            }
+        if (parseMultipartPart(part, email, bodyCollector, partIndex)) {
             return;
         }
 
-        String contentType = extractContentType(part.getContentType());
-        String charset = extractCharset(part.getContentType());
+        MimePartMetadata metadata = extractMimePartMetadata(part);
+
+        if (metadata.isAttachment()) {
+            addAttachmentPart(email, part, metadata);
+            return;
+        }
+
+        addTextPart(email, part, bodyCollector, partIndex, metadata);
+    }
+
+    private boolean parseMultipartPart(Part part, Email email, StringBuilder bodyCollector, AtomicInteger partIndex)
+        throws MessagingException, IOException {
+        if (!part.isMimeType("multipart/*")) {
+            return false;
+        }
+        Object content = part.getContent();
+        if (content instanceof Multipart multipart) {
+            for (int i = 0; i < multipart.getCount(); i++) {
+                BodyPart bodyPart = multipart.getBodyPart(i);
+                parseMimePart(bodyPart, email, bodyCollector, partIndex);
+            }
+        }
+        return true;
+    }
+
+    private MimePartMetadata extractMimePartMetadata(Part part) throws MessagingException {
+        String rawContentType = part.getContentType();
+        String contentType = extractContentType(rawContentType);
+        String charset = extractCharset(rawContentType);
         String transferEncoding = readHeader(part, "Content-Transfer-Encoding");
         String disposition = part.getDisposition();
         String fileName = decodeFileName(part.getFileName());
-        boolean attachment = Part.ATTACHMENT.equalsIgnoreCase(disposition) || (fileName != null && !fileName.isBlank());
+        return new MimePartMetadata(contentType, charset, transferEncoding, disposition, fileName);
+    }
 
-        if (attachment) {
-            email.addAttachment(new EmailAttachment(
-                fileName,
-                contentType,
-                charset,
-                transferEncoding,
-                detectAttachmentSize(part)
-            ));
-            return;
-        }
+    private void addAttachmentPart(Email email, Part part, MimePartMetadata metadata)
+        throws MessagingException, IOException {
+        email.addAttachment(new EmailAttachment(
+            metadata.fileName,
+            metadata.contentType,
+            metadata.charset,
+            metadata.transferEncoding,
+            detectAttachmentSize(part)
+        ));
+    }
 
-        String textContent = readPartContent(part, charset);
+    private void addTextPart(
+        Email email,
+        Part part,
+        StringBuilder bodyCollector,
+        AtomicInteger partIndex,
+        MimePartMetadata metadata
+    ) throws MessagingException, IOException {
+        String textContent = readPartContent(part, metadata.charset);
         email.addPart(new EmailPart(
             partIndex.getAndIncrement(),
-            contentType,
-            charset,
-            transferEncoding,
+            metadata.contentType,
+            metadata.charset,
+            metadata.transferEncoding,
             textContent
         ));
+        appendBodyText(bodyCollector, textContent);
+    }
 
+    private void appendBodyText(StringBuilder bodyCollector, String textContent) {
         if (textContent != null && !textContent.isBlank()) {
             if (!bodyCollector.isEmpty()) {
                 bodyCollector.append("\n\n");
@@ -345,28 +424,84 @@ public class SmtpServer {
     }
 
     private Email fallbackParseEmail(Email email, String rawData) {
-        String subject = "";
-        StringBuilder body = new StringBuilder();
-        boolean headersDone = false;
+        FallbackSections sections = splitFallbackSections(rawData);
+        String subject = applyFallbackHeaders(email, sections.headerLines);
+
+        email.setSubject(subject);
+        email.setBody(String.join("\n", sections.bodyLines).trim());
+        return email;
+    }
+
+    private FallbackSections splitFallbackSections(String rawData) {
+        FallbackSections sections = new FallbackSections();
+        boolean readingHeaders = true;
 
         for (String line : rawData.split("\n")) {
-            if (!headersDone) {
-                if (line.trim().isEmpty()) {
-                    headersDone = true;
-                } else if (line.toLowerCase().startsWith("subject:")) {
-                    subject = line.substring(8).trim();
-                } else if (line.toLowerCase().startsWith("from:") && email.getFrom().isEmpty()) {
-                    email.setFrom(extractAddress(line.substring(5).trim()));
-                } else if (line.toLowerCase().startsWith("to:") && email.getTo().isEmpty()) {
-                    email.setTo(extractAddress(line.substring(3).trim()));
-                }
+            if (readingHeaders && line.trim().isEmpty()) {
+                readingHeaders = false;
+                continue;
+            }
+            if (readingHeaders) {
+                sections.headerLines.add(line);
             } else {
-                body.append(line).append("\n");
+                sections.bodyLines.add(line);
             }
         }
 
-        email.setSubject(subject);
-        email.setBody(body.toString().trim());
-        return email;
+        return sections;
+    }
+
+    private String applyFallbackHeaders(Email email, java.util.List<String> headerLines) {
+        String subject = "";
+        for (String headerLine : headerLines) {
+            String lower = headerLine.toLowerCase(Locale.ROOT);
+            if (lower.startsWith("subject:")) {
+                subject = headerLine.substring(8).trim();
+            } else if (lower.startsWith("from:") && email.getFrom().isEmpty()) {
+                email.setFrom(extractAddress(headerLine.substring(5).trim()));
+            } else if (lower.startsWith("to:") && email.getTo().isEmpty()) {
+                email.setTo(extractAddress(headerLine.substring(3).trim()));
+            }
+        }
+        return subject;
+    }
+
+    private static final class ClientSession {
+        private String from = "";
+        private String to = "";
+        private StringBuilder dataBuffer = new StringBuilder();
+        private boolean inData = false;
+
+        private void reset() {
+            from = "";
+            to = "";
+            dataBuffer = new StringBuilder();
+            inData = false;
+        }
+    }
+
+    private static final class FallbackSections {
+        private final java.util.List<String> headerLines = new java.util.ArrayList<>();
+        private final java.util.List<String> bodyLines = new java.util.ArrayList<>();
+    }
+
+    private static final class MimePartMetadata {
+        private final String contentType;
+        private final String charset;
+        private final String transferEncoding;
+        private final String disposition;
+        private final String fileName;
+
+        private MimePartMetadata(String contentType, String charset, String transferEncoding, String disposition, String fileName) {
+            this.contentType = contentType;
+            this.charset = charset;
+            this.transferEncoding = transferEncoding;
+            this.disposition = disposition;
+            this.fileName = fileName;
+        }
+
+        private boolean isAttachment() {
+            return Part.ATTACHMENT.equalsIgnoreCase(disposition) || (fileName != null && !fileName.isBlank());
+        }
     }
 }

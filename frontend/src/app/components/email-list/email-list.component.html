@@ -21,7 +21,14 @@
       </tr>
     </thead>
     <tbody>
-      <tr *ngFor="let email of emails" (click)="viewEmail(email.id)" class="email-row">
+      <tr
+        *ngFor="let email of emails"
+        class="email-row"
+        tabindex="0"
+        (click)="viewEmail(email.id)"
+        (keydown.enter)="viewEmail(email.id)"
+        (keydown.space)="onRowSpaceKey($event, email.id)"
+      >
         <td>{{ email.from }}</td>
         <td>{{ email.to }}</td>
         <td>{{ email.subject }}</td>

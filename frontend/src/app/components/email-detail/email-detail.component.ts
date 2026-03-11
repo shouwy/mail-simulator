@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { finalize } from 'rxjs';
 import { EmailService } from '../../services/email.service';
 import { Email, EmailPart } from '../../models/email.model';
 
@@ -24,17 +25,25 @@ export class EmailDetailComponent implements OnInit {
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
-    this.emailService.getEmail(id).subscribe({
-      next: (email) => {
-        this.email = email;
-        this.displayParts = this.sortPartsForDisplay(email.parts ?? []);
+    if (!Number.isFinite(id)) {
+      this.error = 'Invalid email id.';
+      this.loading = false;
+      return;
+    }
+
+    this.emailService.getEmail(id)
+      .pipe(finalize(() => {
         this.loading = false;
-      },
-      error: () => {
-        this.error = 'Email not found.';
-        this.loading = false;
-      }
-    });
+      }))
+      .subscribe({
+        next: (email) => {
+          this.email = email;
+          this.displayParts = this.sortPartsForDisplay(email.parts ?? []);
+        },
+        error: () => {
+          this.error = 'Email not found.';
+        }
+      });
   }
 
   goBack(): void {

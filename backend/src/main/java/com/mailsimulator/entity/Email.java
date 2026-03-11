@@ -1,7 +1,10 @@
 package com.mailsimulator.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "emails")
@@ -25,6 +28,14 @@ public class Email {
 
     @Column(name = "received_at")
     private LocalDateTime receivedAt;
+
+    @OneToMany(mappedBy = "email", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JsonManagedReference
+    private List<EmailPart> parts = new ArrayList<>();
+
+    @OneToMany(mappedBy = "email", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JsonManagedReference
+    private List<EmailAttachment> attachments = new ArrayList<>();
 
     public Email() {}
 
@@ -53,4 +64,40 @@ public class Email {
 
     public LocalDateTime getReceivedAt() { return receivedAt; }
     public void setReceivedAt(LocalDateTime receivedAt) { this.receivedAt = receivedAt; }
+
+    public List<EmailPart> getParts() { return parts; }
+    public void setParts(List<EmailPart> parts) {
+        this.parts.clear();
+        if (parts != null) {
+            for (EmailPart part : parts) {
+                addPart(part);
+            }
+        }
+    }
+
+    public List<EmailAttachment> getAttachments() { return attachments; }
+    public void setAttachments(List<EmailAttachment> attachments) {
+        this.attachments.clear();
+        if (attachments != null) {
+            for (EmailAttachment attachment : attachments) {
+                addAttachment(attachment);
+            }
+        }
+    }
+
+    public void addPart(EmailPart part) {
+        if (part == null) {
+            return;
+        }
+        part.setEmail(this);
+        this.parts.add(part);
+    }
+
+    public void addAttachment(EmailAttachment attachment) {
+        if (attachment == null) {
+            return;
+        }
+        attachment.setEmail(this);
+        this.attachments.add(attachment);
+    }
 }

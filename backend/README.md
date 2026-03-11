@@ -4,8 +4,8 @@ Spring Boot backend for the SMTP mail simulator.
 
 ## Capabilities
 
-- Embedded SMTP server listening on port `2525` by default.
-- REST API on port `8080`.
+- Embedded SMTP server listening on port `4025` by default.
+- REST API on port `8090`.
 - Email persistence in H2 in-memory database.
 - MIME-aware parsing:
   - encoded subject decoding (`=?UTF-8?...?=`)
@@ -22,8 +22,8 @@ mvn spring-boot:run
 
 Useful endpoints:
 
-- API: `http://localhost:8080/api/emails`
-- H2 console: `http://localhost:8080/h2-console`
+- API: `http://localhost:8090/api/emails`
+- H2 console: `http://localhost:8090/h2-console`
 - JDBC URL: `jdbc:h2:mem:maildb`
 
 ## Tests

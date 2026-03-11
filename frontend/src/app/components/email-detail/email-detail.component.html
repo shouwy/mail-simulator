@@ -14,5 +14,26 @@
     <div class="email-body">
       <pre>{{ email.body }}</pre>
     </div>
+
+    <div *ngIf="email.parts && email.parts.length > 0" class="email-meta">
+      <h3>Multipart parts</h3>
+      <div *ngFor="let part of email.parts">
+        <strong>Part {{ part.partIndex }}:</strong>
+        {{ part.contentType }}
+        <span *ngIf="part.charset"> | charset={{ part.charset }}</span>
+        <span *ngIf="part.transferEncoding"> | transfer-encoding={{ part.transferEncoding }}</span>
+      </div>
+    </div>
+
+    <div *ngIf="email.attachments && email.attachments.length > 0" class="email-meta">
+      <h3>Attachments</h3>
+      <div *ngFor="let attachment of email.attachments">
+        <strong>{{ attachment.fileName || '(unnamed)' }}</strong>
+        - {{ attachment.contentType }}
+        <span *ngIf="attachment.charset"> | charset={{ attachment.charset }}</span>
+        <span *ngIf="attachment.transferEncoding"> | transfer-encoding={{ attachment.transferEncoding }}</span>
+        | size={{ attachment.sizeBytes }} bytes
+      </div>
+    </div>
   </div>
 </div>

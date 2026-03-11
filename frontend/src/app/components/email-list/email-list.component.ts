@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { finalize } from 'rxjs';
 import { EmailService } from '../../services/email.service';
 import { Email } from '../../models/email.model';
 
@@ -15,7 +16,7 @@ export class EmailListComponent implements OnInit {
   loading = true;
   error = '';
 
-  constructor(private emailService: EmailService, private router: Router) {}
+  constructor(private readonly emailService: EmailService, private readonly router: Router) {}
 
   ngOnInit(): void {
     this.loadEmails();
@@ -24,19 +25,26 @@ export class EmailListComponent implements OnInit {
   loadEmails(): void {
     this.loading = true;
     this.error = '';
-    this.emailService.getEmails().subscribe({
-      next: (emails) => {
-        this.emails = emails;
+    this.emailService.getEmails()
+      .pipe(finalize(() => {
         this.loading = false;
-      },
-      error: () => {
-        this.error = 'Failed to load emails. Make sure the backend is running.';
-        this.loading = false;
-      }
-    });
+      }))
+      .subscribe({
+        next: (emails) => {
+          this.emails = emails;
+        },
+        error: () => {
+          this.error = 'Failed to load emails. Make sure the backend is running.';
+        }
+      });
   }
 
   viewEmail(id: number): void {
     this.router.navigate(['/emails', id]);
+  }
+
+  onRowSpaceKey(event: Event, id: number): void {
+    event.preventDefault();
+    this.viewEmail(id);
   }
 }

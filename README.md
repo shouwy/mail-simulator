@@ -16,6 +16,15 @@ A complete application to simulate an SMTP server and visualize received emails 
     - prioritized ordering (`text/html`, then `text/plain`, then other types)
     - multipart part metadata and attachment metadata
 - End-to-end SMTP integration test added to validate real wire-level behavior.
+- Backend SMTP server code was refactored to reduce cognitive complexity and improve maintainability (`start`, SMTP command handling, fallback parsing, MIME part parsing).
+- SMTP integration coverage was expanded with:
+    - `RSET` envelope reset behavior
+    - SMTP dot-stuffing handling in `DATA`
+- Frontend code quality improvements:
+    - `readonly` dependency injections in components/services
+    - simplified loading state handling with RxJS `finalize`
+    - keyboard-accessible email row navigation
+- Frontend unit tests now cover components and service behavior (list/detail/service).
 
 ## Architecture
 
@@ -126,6 +135,22 @@ It validates:
 - multipart parsing (`text/plain`, `text/html`, `text/calendar`)
 - `charset` and `Content-Transfer-Encoding` preservation per part
 - attachment metadata extraction
+
+## Frontend Unit Tests
+
+The frontend test suite runs with Karma + Firefox Headless.
+
+- Main specs:
+    - `frontend/src/app/components/email-list/email-list.component.spec.ts`
+    - `frontend/src/app/components/email-detail/email-detail.component.spec.ts`
+    - `frontend/src/app/services/email.service.spec.ts`
+
+Run tests:
+
+```bash
+cd frontend
+npm test -- --watch=false --browsers=FirefoxHeadless --progress=false
+```
 
 ## API Endpoints
 

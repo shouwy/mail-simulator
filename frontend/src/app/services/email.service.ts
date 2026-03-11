@@ -10,7 +10,7 @@ export class EmailService {
 
   private readonly apiUrl = 'http://localhost:8090/api/emails';
 
-  constructor(private http: HttpClient) {}
+  constructor(private readonly http: HttpClient) {}
 
   getEmails(): Observable<Email[]> {
     return this.http.get<Email[]>(this.apiUrl);

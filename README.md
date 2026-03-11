@@ -9,12 +9,17 @@ A complete application to simulate an SMTP server and visualize received emails 
     - `multipart/*` messages (including nested multiparts)
     - per-part `Content-Type`, `charset`, and `Content-Transfer-Encoding`
     - attachment detection and metadata extraction (file name, content type, transfer encoding, size)
-- Email detail UI now shows multipart part metadata and attachment metadata.
+- Email detail UI now renders message content per part with:
+    - HTML rendering for `text/html` parts
+    - plain preview for `text/plain` and other part types
+    - `HTML` / `TEXT` / `OTHER` badges for quick identification
+    - prioritized ordering (`text/html`, then `text/plain`, then other types)
+    - multipart part metadata and attachment metadata
 - End-to-end SMTP integration test added to validate real wire-level behavior.
 
 ## Architecture
 
-- **Backend**: Spring Boot 3.5.11 — embeds an SMTP server on port 2525 and exposes a REST API on port 8080. Emails are persisted in an in-memory H2 database.
+- **Backend**: Spring Boot 3.5.11 — embeds an SMTP server on port 4025 and exposes a REST API on port 8090. Emails are persisted in an in-memory H2 database.
 - **Frontend**: Angular 19 — lists received emails and shows the full detail of any email with a single click.
 
 ## Screenshots
@@ -34,22 +39,22 @@ cd backend
 mvn spring-boot:run
 ```
 
-The REST API is available at `http://localhost:8080/api/emails`.  
-The H2 console is available at `http://localhost:8080/h2-console` (JDBC URL: `jdbc:h2:mem:maildb`).
+The REST API is available at `http://localhost:8090/api/emails`.  
+The H2 console is available at `http://localhost:8090/h2-console` (JDBC URL: `jdbc:h2:mem:maildb`).
 
 ### Frontend
 
 ```bash
 cd frontend
 npm install
-ng serve
+ng serve --port 4300
 ```
 
-Open `http://localhost:4200` in your browser.
+Open `http://localhost:4300` in your browser.
 
 ## Sending a Test Email
 
-Point any SMTP client at `localhost:2525` (no authentication required). Example with Python:
+Point any SMTP client at `localhost:4025` (no authentication required). Example with Python:
 
 ```python
 import smtplib
@@ -60,7 +65,7 @@ msg["Subject"] = "Test"
 msg["From"] = "sender@example.com"
 msg["To"] = "recipient@example.com"
 
-with smtplib.SMTP("localhost", 2525) as server:
+with smtplib.SMTP("localhost", 4025) as server:
     server.sendmail("sender@example.com", ["recipient@example.com"], msg.as_string())
 ```
 
@@ -99,7 +104,7 @@ msg.add_attachment(
     filename="piece-jointe.txt"
 )
 
-with smtplib.SMTP("localhost", 2525) as server:
+with smtplib.SMTP("localhost", 4025) as server:
     server.send_message(msg)
 ```
 
@@ -131,6 +136,8 @@ It validates:
 
 ## Changelog
 
+See `CHANGELOG.md` for the complete history.
+
 ### 2026-03-11
 
 #### Added
@@ -140,6 +147,8 @@ It validates:
 - Multipart parsing with per-part metadata persistence: `Content-Type`, `charset`, `Content-Transfer-Encoding`.
 - Attachment metadata persistence: file name (decoded when encoded), content type, charset, transfer encoding, size in bytes.
 - Frontend detail view support for multipart and attachment metadata.
+- Frontend part-by-part rendering with `HTML` / `TEXT` / `OTHER` badges.
+- Frontend sorting of parts with `text/html` first, then `text/plain`, then other content types.
 - Real SMTP integration test: `backend/src/test/java/com/mailsimulator/SmtpServerIntegrationTest.java`.
 
 #### Changed

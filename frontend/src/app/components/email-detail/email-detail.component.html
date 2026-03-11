@@ -11,19 +11,35 @@
       <div><span class="label">To:</span> {{ email.to }}</div>
       <div><span class="label">Received:</span> {{ email.receivedAt | date:'medium' }}</div>
     </div>
-    <div class="email-body">
-      <pre>{{ email.body }}</pre>
-    </div>
-
-    <div *ngIf="email.parts && email.parts.length > 0" class="email-meta">
-      <h3>Multipart parts</h3>
-      <div *ngFor="let part of email.parts">
-        <strong>Part {{ part.partIndex }}:</strong>
-        {{ part.contentType }}
-        <span *ngIf="part.charset"> | charset={{ part.charset }}</span>
-        <span *ngIf="part.transferEncoding"> | transfer-encoding={{ part.transferEncoding }}</span>
+    <div *ngIf="hasRenderableParts(email); else fallbackBody" class="parts-container">
+      <h3>Message parts</h3>
+      <div *ngFor="let part of displayParts" class="part-card">
+        <div class="part-header">
+          <strong>Part {{ part.partIndex }}</strong>
+          <span class="part-badge" [ngClass]="getPartBadgeClass(part)">{{ getPartBadge(part) }}</span>
+        </div>
+        <div class="part-meta">
+          {{ part.contentType }}
+          <span *ngIf="part.charset"> | charset={{ part.charset }}</span>
+          <span *ngIf="part.transferEncoding"> | transfer-encoding={{ part.transferEncoding }}</span>
+        </div>
+        <div class="email-body">
+          <div *ngIf="isHtmlPart(part); else rawPart" class="html-content" [innerHTML]="part.content"></div>
+          <ng-template #rawPart>
+            <pre>{{ part.content || '(no content)' }}</pre>
+          </ng-template>
+        </div>
       </div>
     </div>
+
+    <ng-template #fallbackBody>
+      <div class="email-body">
+        <div *ngIf="shouldRenderFallbackHtml(email); else plainBody" class="html-content" [innerHTML]="email.body"></div>
+        <ng-template #plainBody>
+          <pre>{{ email.body }}</pre>
+        </ng-template>
+      </div>
+    </ng-template>
 
     <div *ngIf="email.attachments && email.attachments.length > 0" class="email-meta">
       <h3>Attachments</h3>

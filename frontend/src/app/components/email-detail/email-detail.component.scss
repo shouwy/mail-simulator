@@ -65,6 +65,12 @@
     }
 
     .email-body {
+      .html-content {
+        line-height: 1.6;
+        color: #212529;
+        word-break: break-word;
+      }
+
       pre {
         margin: 0;
         white-space: pre-wrap;
@@ -73,6 +79,67 @@
         font-size: 0.95rem;
         line-height: 1.6;
         color: #212529;
+      }
+    }
+
+    .parts-container {
+      margin-bottom: 20px;
+
+      h3 {
+        margin: 0 0 12px 0;
+        color: #212529;
+      }
+
+      .part-card {
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 12px;
+        background: #ffffff;
+
+        .part-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 8px;
+        }
+
+        .part-badge {
+          display: inline-block;
+          font-size: 0.75rem;
+          font-weight: 700;
+          letter-spacing: 0.03em;
+          border-radius: 999px;
+          padding: 2px 8px;
+
+          &.badge-html {
+            color: #0b7285;
+            background: #e3fafc;
+            border: 1px solid #99e9f2;
+          }
+
+          &.badge-text {
+            color: #1b4332;
+            background: #ebfbee;
+            border: 1px solid #b2f2bb;
+          }
+
+          &.badge-other {
+            color: #5f3dc4;
+            background: #f3f0ff;
+            border: 1px solid #d0bfff;
+          }
+        }
+
+        .part-meta {
+          color: #495057;
+          margin-bottom: 10px;
+          font-size: 0.9rem;
+        }
+
+        .email-body {
+          margin-bottom: 0;
+        }
       }
     }
   }

@@ -8,7 +8,7 @@
   <div *ngIf="error" class="error">{{ error }}</div>
 
   <div *ngIf="!loading && !error && emails.length === 0" class="empty">
-    No emails received yet. Send an email to localhost:2525 to get started.
+    No emails received yet. Send an email to localhost:4025 to get started.
   </div>
 
   <table *ngIf="!loading && emails.length > 0" class="email-table">

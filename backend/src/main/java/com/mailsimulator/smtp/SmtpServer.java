@@ -39,7 +39,7 @@ public class SmtpServer {
 
     private static final Logger logger = LoggerFactory.getLogger(SmtpServer.class);
 
-    @Value("${smtp.port:2525}")
+    @Value("${smtp.port:4025}")
     private int smtpPort;
 
     private final EmailService emailService;

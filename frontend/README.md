@@ -6,7 +6,10 @@ Angular 19 UI for browsing emails received by the SMTP simulator backend.
 
 - Email list with sender, recipient, subject, and reception date.
 - Email detail page with:
-	- aggregated body preview
+	- per-part message rendering (`text/html`, `text/plain`, and other content types)
+	- HTML rendering for `text/html` parts
+	- type badges per part: `HTML`, `TEXT`, `OTHER`
+	- part ordering optimized for readability (`text/html` first)
 	- multipart part metadata (`contentType`, `charset`, `transferEncoding`)
 	- attachment metadata (name, type, charset, transfer encoding, size)
 
@@ -18,9 +21,9 @@ npm install
 npm run start
 ```
 
-Open `http://localhost:4200`.
+Open `http://localhost:4300`.
 
-The backend API is expected at `http://localhost:8080/api/emails`.
+The backend API is expected at `http://localhost:8090/api/emails`.
 
 ## Build
 

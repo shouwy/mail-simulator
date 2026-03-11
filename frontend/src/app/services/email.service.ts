@@ -8,7 +8,7 @@ import { Email } from '../models/email.model';
 })
 export class EmailService {
 
-  private readonly apiUrl = 'http://localhost:8080/api/emails';
+  private readonly apiUrl = 'http://localhost:8090/api/emails';
 
   constructor(private http: HttpClient) {}
 

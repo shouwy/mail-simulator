@@ -17,6 +17,9 @@ public class EmailService {
     }
 
     public Email save(Email email) {
+        if (email == null) {
+            throw new IllegalArgumentException("Email cannot be null");
+        }
         return emailRepository.save(email);
     }
 
@@ -25,6 +28,9 @@ public class EmailService {
     }
 
     public Optional<Email> findById(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Id cannot be null");
+        }
         return emailRepository.findById(id);
     }
 }
